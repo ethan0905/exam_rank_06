@@ -6,7 +6,7 @@
 /*   By: esafar <esafar@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/01/15 15:51:16 by esafar            #+#    #+#             */
-/*   Updated: 2023/01/16 14:02:47 by esafar           ###   ########.fr       */
+/*   Updated: 2023/01/16 15:34:34 by esafar           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,7 +43,7 @@ void    sendAll(int senderfd)
 {
     for (int fd = 0; fd <= maxfd; fd++)
         if (FD_ISSET(fd, &writefds) && fd != senderfd)
-            send(fd, buftowrite, strlen(buftowrite));
+            send(fd, buftowrite, strlen(buftowrite), 0);
 }
 
 int main(int ac, char **av)

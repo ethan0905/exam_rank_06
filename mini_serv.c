@@ -17,7 +17,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
-//init variables and struct
+//initialize variables and structure
 typedef struct s_client{
     int id;
     char msg[1024];
@@ -43,12 +43,12 @@ void    sendAll(int senderfd)
 {
     for (int fd = 0; fd <= maxfd; fd++)
         if (FD_ISSET(fd, &writefds) && fd != senderfd)
-            send(fd, &buftowrite, strlen(buftowrite), 0); // <--
+            send(fd, &buftowrite, strlen(buftowrite), 0);
 }
 
 int main(int ac, char **av)
 {
-    //error handling
+    //1) handle error and create socket
     if (ac != 2)
         err("Wrong number of arguments");
     
@@ -56,69 +56,70 @@ int main(int ac, char **av)
     if (sockfd < 0)
         err(NULL);
     
-    //bzero part
+    //2) set variables
     FD_ZERO(&active);
     bzero(clients, sizeof(clients));
     maxfd = sockfd;
     FD_SET(sockfd, &active);
     
-    //sockaddr part
+    //3) sockaddr part
     struct sockaddr_in servaddr;
     socklen_t len;
     bzero(&servaddr, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = htonl(2130706433);
-    servaddr.sin_port = htons(atoi(av[1]));
+    servaddr.sin_addr.s_addr = htonl(2130706433); //for 127.0.0.1 connection
+    servaddr.sin_port = htons(atoi(av[1])); //for port
 
-    //bind and listen
+    //4) bind and listen
     if (bind(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
         err(NULL);
     if (listen(sockfd, 10) < 0)
         err(NULL);
 
-    //while loop
+    //5) start server
     while (1)
     {
-        //poll or select
+        //a) poll or select
         readfds = writefds = active;
         if (select(maxfd + 1, &readfds, &writefds, NULL, NULL) < 0)
             continue;
         for (int fd = 0; fd <= maxfd; fd++)
         {
-            //== 
+            //b) == case 
             if (FD_ISSET(fd, &readfds) && fd == sockfd)
             {
-                //accept
+                //-> accept client connection
                 int clientfd = accept(sockfd, (struct sockaddr *)&servaddr, &len);
                 if (clientfd < 0)
                     continue;
                 maxfd = clientfd > maxfd ? clientfd : maxfd;
-                clients[fd].id = nextid++; // <--
-                FD_SET(clientfd, &active); // <--
-                sprintf(buftowrite, "server: client %d has arrived\n", clients[fd].id);
+                clients[clientfd].id = nextid++;
+                FD_SET(clientfd, &active);
+                sprintf(buftowrite, "server: client %d has arrived\n", clients[clientfd].id);
                 sendAll(clientfd);
                 break;
             }
 
-            //!=
+            //c) != case
             if (FD_ISSET(fd, &readfds) && fd != sockfd)
             {
-                //receive
+                //-> receive bytes read
                 int nbytes = recv(fd, buftoread, 70000, 0);
                 if (nbytes <= 0)
                 {
-                    sprintf(buftowrite, "server: client %d has disconnected!\n", clients[fd].id);
+                    //-> disconnection case
+                    sprintf(buftowrite, "server: client %d has left\n", clients[fd].id);
                     sendAll(fd);
-                    FD_CLR(fd, &active); // <--
+                    FD_CLR(fd, &active);
                     close(fd);
                     break;
                 }
                 else
                 {
-                    for (int i = 0, j = strlen(clients[fd].msg); i < nbytes; i++, j++) // <--
+                    for (int i = 0, j = strlen(clients[fd].msg); i < nbytes; i++, j++)
                     {
-                        //condition to stop writing the msg
                         clients[fd].msg[j] = buftoread[i];
+                        //-> check if end reached, then send message
                         if (clients[fd].msg[j] == '\n')
                         {
                             clients[fd].msg[j] = '\0';
@@ -130,7 +131,6 @@ int main(int ac, char **av)
                     }
                     break;
                 }
-                
             }
         }
     }
